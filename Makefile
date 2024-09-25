@@ -3,9 +3,6 @@ ifneq (,$(wildcard ./.env))
     export $(shell sed 's/=.*//' .env)
 endif
 
-GO := go
-PROJECT_NAME := slop
-
 .PHONY: all build clean test serve test-serve
 
 CMD_DIR := cmd
