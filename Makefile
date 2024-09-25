@@ -1,3 +1,8 @@
+ifneq (,$(wildcard ./.env))
+    include .env
+    export $(shell sed 's/=.*//' .env)
+endif
+
 GO := go
 PROJECT_NAME := slop
 
@@ -27,6 +32,16 @@ dev-serve-test:
 
 test:
 	@$(GO) test ./...
+
+test-register:
+	@curl -X POST http://localhost:3000/register \
+	     -H "Content-Type: application/json" \
+	     -d '{"first_name": "$(TEST_FIRST_NAME)", "last_name": "$(TEST_LAST_NAME)", "email": "$(TEST_EMAIL)","password": "$(TEST_PASSWORD)"}'
+
+test-login:
+	@curl -X POST http://localhost:3000/login \
+	     -H "Content-Type: application/json" \
+	     -d '{"email": "$(TEST_EMAIL)","password": "$(TEST_PASSWORD)"}'
 
 serve: build
 	@./bin/serve
