@@ -87,7 +87,7 @@ dump:
 	@echo "$(BINARIES)"
 
 dev:
-	@air cmd/serve/serve.go # | humanlog
+	@air cmd/serve/serve.go | humanlog
 
 dev-reset: reset dev
 

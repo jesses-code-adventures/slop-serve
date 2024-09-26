@@ -82,7 +82,6 @@ func (a AppApi) UserRegister(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, a.jsonErrorString("Invalid input"), http.StatusBadRequest)
 		return
 	}
-	user.Print()
 	hashed, err := a.auth.Hash(user.RawPassword)
 	if err != nil {
 		a.logger().Error("got error hashing password")
