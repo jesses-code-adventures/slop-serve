@@ -18,7 +18,6 @@ func (a AppApi) setAuthorization(w http.ResponseWriter, r *http.Request, newToke
 		Value: newToken,
 	}
 	http.SetCookie(w, cookie)
-	r.Header.Set("Authorization", newToken)
 }
 
 func (a *AppApi) jsonResponse(w http.ResponseWriter, r *http.Request, key string, value interface{}) {
@@ -26,8 +25,17 @@ func (a *AppApi) jsonResponse(w http.ResponseWriter, r *http.Request, key string
 	response := map[string]interface{}{key: value}
 	marshalled, err := json.Marshal(response)
 	if err != nil {
-		http.Error(w, "Json marshalling error", http.StatusInternalServerError)
+		http.Error(w, a.jsonErrorString("Json marshalling error"), http.StatusInternalServerError)
 		return
 	}
 	w.Write(marshalled)
+}
+
+func (a *AppApi) jsonErrorString(errorMessage string) string {
+	response := map[string]interface{}{"error": errorMessage}
+	marshalled, err := json.Marshal(response)
+	if err != nil {
+		panic("couldn't marshal json message")
+	}
+	return string(marshalled)
 }

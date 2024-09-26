@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"net/http"
@@ -11,12 +12,12 @@ import (
 )
 
 type Server struct {
-	Port   string
-	Mux    *http.ServeMux
-	Logger *slog.Logger
+	Port string
+	Mux  *http.ServeMux
+	Ctx  context.Context
 }
 
-func NewServer(logger *slog.Logger) Server {
+func NewServer(ctx context.Context) Server {
 	port := os.Getenv("SERVER_PORT")
 	if len(port) == 0 {
 		panic("no port found")
@@ -26,10 +27,14 @@ func NewServer(logger *slog.Logger) Server {
 	}
 	mux := http.NewServeMux()
 	return Server{
-		Port:   port,
-		Mux:    mux,
-		Logger: logger,
+		Port: port,
+		Mux:  mux,
+		Ctx:  ctx,
 	}
+}
+
+func (s *Server) logger() *slog.Logger {
+	return s.Ctx.Value("logger").(*slog.Logger)
 }
 
 func (s *Server) Serve() {

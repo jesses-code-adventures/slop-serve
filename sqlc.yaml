@@ -1,0 +1,17 @@
+version: "2"
+sql:
+  - engine: "postgresql"
+    queries: "model/queries"
+    schema: "migrations"
+    gen:
+      go:
+        package: "model"
+        sql_package: "pgx/v5"
+        out: "model"
+        overrides:
+          - go_type: "github.com/gofrs/uuid.UUID"
+            db_type: "uuid"
+            nullable: false
+          - go_type: "github.com/gofrs/uuid.NullUUID"
+            db_type: "uuid"
+            nullable: true

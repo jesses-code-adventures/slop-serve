@@ -1,12 +1,15 @@
 package api
 
 import (
+	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
 
+	"github.com/jesses-code-adventures/slop/auth"
 	"github.com/jesses-code-adventures/slop/db"
 	"github.com/jesses-code-adventures/slop/jwt"
 	"github.com/jesses-code-adventures/slop/server"
@@ -14,12 +17,17 @@ import (
 
 type AppApi struct {
 	server *server.Server
-	logger *slog.Logger
 	db     db.Database
+	ctx    context.Context
+	auth   auth.Authorizer
 }
 
-func NewAppApi(s *server.Server, l *slog.Logger, d db.Database) AppApi {
-	return AppApi{server: s, logger: l, db: d}
+func NewAppApi(s *server.Server, ctx context.Context, d db.Database) AppApi {
+	return AppApi{server: s, ctx: ctx, db: d, auth: auth.NewPasswordHandler()}
+}
+
+func (a *AppApi) logger() *slog.Logger {
+	return a.ctx.Value("logger").(*slog.Logger)
 }
 
 func (a AppApi) Server() *server.Server {
@@ -28,15 +36,15 @@ func (a AppApi) Server() *server.Server {
 
 func (a AppApi) UserAuthorize(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		a.logger.Info("Authenticating request")
+		a.logger().Info("Authenticating request")
 		token := a.preferCookieOverHeader(r, "Authorization")
 		if token == "" {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			http.Error(w, a.jsonErrorString("Unauthorized"), http.StatusUnauthorized)
 			return
 		}
 		userId := a.preferCookieOverHeader(r, "x-slop-user-id")
 		if userId == "" {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			http.Error(w, a.jsonErrorString("Unauthorized"), http.StatusUnauthorized)
 			return
 		}
 		newToken, err := jwt.ValidateToken(userId, token)
@@ -45,7 +53,7 @@ func (a AppApi) UserAuthorize(next http.HandlerFunc) http.HandlerFunc {
 				http.Redirect(w, r, "/login", http.StatusFound)
 				return
 			}
-			http.Error(w, "Invalid Auth Token", http.StatusUnauthorized)
+			http.Error(w, a.jsonErrorString("Invalid Auth Token"), http.StatusUnauthorized)
 			return
 		}
 		a.setAuthorization(w, r, newToken)
@@ -60,19 +68,34 @@ type userNewFromRequest struct {
 	RawPassword string `json:"password"`
 }
 
+func (u userNewFromRequest) Print() {
+	fmt.Printf("FirstName: %s\n", u.FirstName)
+	fmt.Printf("LastName: %s\n", u.LastName)
+	fmt.Printf("Email: %s\n", u.Email)
+	fmt.Printf("RawPassword: %s\n", u.RawPassword)
+}
+
 func (a AppApi) UserRegister(w http.ResponseWriter, r *http.Request) {
 	var user userNewFromRequest
 	err := json.NewDecoder(r.Body).Decode(&user)
 	if err != nil {
-		http.Error(w, "Invalid input", http.StatusBadRequest)
+		http.Error(w, a.jsonErrorString("Invalid input"), http.StatusBadRequest)
 		return
 	}
-	userId, err := a.db.UserRegister(user.FirstName, user.LastName, user.Email, user.RawPassword)
+	user.Print()
+	hashed, err := a.auth.Hash(user.RawPassword)
 	if err != nil {
-		http.Error(w, "Error registering user", http.StatusInternalServerError)
+		a.logger().Error("got error hashing password")
+		http.Error(w, a.jsonErrorString("Error processing password"), http.StatusInternalServerError)
 		return
 	}
-	a.logger.Info(fmt.Sprintf("User registered successfully"))
+	userId, err := a.db.UserCreate(user.FirstName, user.LastName, user.Email, hashed)
+	if err != nil {
+		a.logger().Error("got error registering user %s", err.Error())
+		http.Error(w, a.jsonErrorString("Error registering user"), http.StatusInternalServerError)
+		return
+	}
+	a.logger().Info(fmt.Sprintf("User registered successfully"))
 	w.WriteHeader(http.StatusCreated)
 	a.jsonResponse(w, r, "id", userId)
 }
@@ -86,21 +109,32 @@ func (a AppApi) UserLogin(w http.ResponseWriter, r *http.Request) {
 	var user userLoginFromRequest
 	err := json.NewDecoder(r.Body).Decode(&user)
 	if err != nil {
-		http.Error(w, "Invalid input", http.StatusBadRequest)
+		http.Error(w, a.jsonErrorString("Invalid input"), http.StatusBadRequest)
 		return
 	}
 	// TODO: password comparison, argon2 etc
-	userId, err := a.db.UserLogin(user.Email, user.Password)
+	userId, hashedPassword, err := a.db.HashedPasswordGet(user.Email)
 	if err != nil {
-		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+		if errors.Is(err, sql.ErrNoRows) {
+			http.Error(w, a.jsonErrorString("Email Not Found"), http.StatusNotFound)
+			return
+		} else {
+			http.Error(w, a.jsonErrorString("Internal Server Error"), http.StatusInternalServerError)
+			return
+		}
+	}
+	authorized, err := a.auth.Verify(user.Password, hashedPassword)
+	if err != nil || !authorized {
+		http.Error(w, a.jsonErrorString("Not Authorized"), http.StatusUnauthorized)
 		return
 	}
 	token, err := jwt.CreateToken(userId)
 	if err != nil {
-		http.Error(w, "Error creating auth token", http.StatusInternalServerError)
+		http.Error(w, a.jsonErrorString("Error creating auth token"), http.StatusInternalServerError)
 		return
 	}
-	a.logger.Info("User logged in successfully")
+	a.setAuthorization(w, r, token)
+	a.logger().Info("User logged in successfully")
 	a.jsonResponse(w, r, "token", token)
 }
 
@@ -111,12 +145,12 @@ type ImageRequestMetadata struct {
 func (a AppApi) ImageGenerate(w http.ResponseWriter, r *http.Request) {
 	err := r.ParseMultipartForm(10 << 20) // 10 MB
 	if err != nil {
-		http.Error(w, "Unable to parse form", http.StatusBadRequest)
+		http.Error(w, a.jsonErrorString("Unable to parse form"), http.StatusBadRequest)
 		return
 	}
 	file, _, err := r.FormFile("image")
 	if err != nil {
-		http.Error(w, "Error retrieving file", http.StatusBadRequest)
+		http.Error(w, a.jsonErrorString("Error retrieving file"), http.StatusBadRequest)
 		return
 	}
 	defer file.Close()
@@ -124,7 +158,7 @@ func (a AppApi) ImageGenerate(w http.ResponseWriter, r *http.Request) {
 		Character: r.FormValue("character"),
 	}
 	// Process the image and metadata as needed
-	a.logger.Info("Image generation process started", "character", metadata.Character)
+	a.logger().Info("Image generation process started", "character", metadata.Character)
 	// Simulate image processing and generation
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("Image generated successfully"))

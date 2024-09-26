@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log/slog"
 	"os"
 
@@ -11,7 +12,8 @@ import (
 
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
-	server := server.NewServer(logger)
+	ctx := context.WithValue(context.Background(), "logger", logger)
+	server := server.NewServer(ctx)
 	api := a.NewTestApi(&server, logger)
 	a.BindRoutes(api)
 	logger.Info("running serve...")
