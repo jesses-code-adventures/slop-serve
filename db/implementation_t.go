@@ -3,7 +3,6 @@ package db
 import (
 	"fmt"
 	"log/slog"
-	"net/url"
 	"os"
 	"time"
 
@@ -45,9 +44,9 @@ func (d TestDatabase) HashedPasswordGet(email string) (hashedPassword string, er
 }
 
 // TODO: should return the whole image
-func (d TestDatabase) GenImageCreate(url url.URL) (id uuid.UUID, err error) {
+func (d TestDatabase) GenImageCreate(url string) (id uuid.UUID, err error) {
 	createdAt := time.Now()
-	d.logger.Debug(fmt.Sprintf("create gen image db\ncreated_at: %s, url: %s", createdAt, url.String()))
+	d.logger.Debug(fmt.Sprintf("create gen image db\ncreated_at: %s, url: %s", createdAt, url))
 	id = getTestGenImageUUID()
 	return
 }

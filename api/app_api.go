@@ -140,7 +140,7 @@ func (a AppApi) UserLogin(w http.ResponseWriter, r *http.Request) {
 }
 
 type ImageRequestMetadata struct {
-	Character string
+	Url string
 }
 
 func (a AppApi) ImageGenerate(w http.ResponseWriter, r *http.Request) {
@@ -156,9 +156,8 @@ func (a AppApi) ImageGenerate(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 	metadata := ImageRequestMetadata{
-		Character: r.FormValue("character"),
+		Url: r.FormValue("url"),
 	}
-	a.logger().Info("Image generation process started", "character", metadata.Character)
-	// Simulate image processing and generation
+	a.db.GenImageCreate(metadata.Url)
 	a.jsonResponse(w, r, "message", "Image generated successfully")
 }

@@ -140,5 +140,5 @@ test-image-generate:
 	    --cookie "Authorization=$$token" \
 	    -H "x-slop-user-id: $(TEST_USER_ID)" \
 	    -F "image=@./test.jpeg" \
-	    -F "character=dave" -s
+	    -F "url=https://google.com/" -s | jq -c
 

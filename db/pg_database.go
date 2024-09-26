@@ -3,7 +3,6 @@ package db
 import (
 	"context"
 	"fmt"
-	"net/url"
 	"os"
 
 	"github.com/gofrs/uuid"
@@ -35,8 +34,8 @@ func (d PgDatabase) Close() error {
 }
 
 func (d PgDatabase) UserCreate(firstName, lastName, email, hashedPassword string) (uuid.UUID, error) {
-	return d.queries.UserCreateWithId(d.ctx, model.UserCreateWithIdParams{Email: email, PasswordHash: hashedPassword, ID: uuid.FromStringOrNil(os.Getenv("TEST_USER_ID"))})
-	// return d.queries.UserCreate(d.ctx, model.UserCreateParams{Email: email, PasswordHash: hashedPassword})
+	return d.queries.UserCreateWithId(d.ctx, model.UserCreateWithIdParams{FirstName: firstName, LastName: lastName, Email: email, PasswordHash: hashedPassword, ID: uuid.FromStringOrNil(os.Getenv("TEST_USER_ID"))})
+	// return d.queries.UserCreate(d.ctx, model.UserCreateParams{FirstName: firstName, LastName: lastName, Email: email, PasswordHash: hashedPassword})
 }
 
 func (d PgDatabase) HashedPasswordGet(email string) (uuid.UUID, string, error) {
@@ -47,6 +46,6 @@ func (d PgDatabase) HashedPasswordGet(email string) (uuid.UUID, string, error) {
 	return resp.UserID, resp.PasswordHash, nil
 }
 
-func (d PgDatabase) GenImageCreate(url url.URL) (uuid.UUID, error) {
-	return d.queries.GenImageCreate(d.ctx, url.String())
+func (d PgDatabase) GenImageCreate(url string) (uuid.UUID, error) {
+	return d.queries.GenImageCreate(d.ctx, url)
 }
