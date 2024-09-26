@@ -53,3 +53,30 @@ func (q *Queries) UserCreate(ctx context.Context, arg UserCreateParams) (uuid.UU
 	err := row.Scan(&id)
 	return id, err
 }
+
+const userCreateWithId = `-- name: UserCreateWithId :one
+INSERT INTO users (first_name, last_name, email, password_hash, id)
+VALUES ($1, $2, $3, $4, $5)
+RETURNING id
+`
+
+type UserCreateWithIdParams struct {
+	FirstName    string
+	LastName     string
+	Email        string
+	PasswordHash string
+	ID           uuid.UUID
+}
+
+func (q *Queries) UserCreateWithId(ctx context.Context, arg UserCreateWithIdParams) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, userCreateWithId,
+		arg.FirstName,
+		arg.LastName,
+		arg.Email,
+		arg.PasswordHash,
+		arg.ID,
+	)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
+}

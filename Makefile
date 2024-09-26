@@ -131,3 +131,14 @@ test-login-fail:
 	     -H "Content-Type: application/json" \
 	     -d '{"email": "$(TEST_EMAIL)","password": "this-is-wrong"}' \
 	     -s | jq -c
+
+test-image-generate:
+	@token=$(shell curl -X POST http://localhost:3000/login \
+	    -H "Content-Type: application/json" \
+	    -d '{"email": "$(TEST_EMAIL)", "password": "$(TEST_PASSWORD)"}' -s | jq -r .token); \
+	curl -X POST http://localhost:3000/image \
+	    --cookie "Authorization=$$token" \
+	    -H "x-slop-user-id: $(TEST_USER_ID)" \
+	    -F "image=@./test.jpeg" \
+	    -F "character=dave" -s
+

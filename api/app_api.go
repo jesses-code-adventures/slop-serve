@@ -39,11 +39,14 @@ func (a AppApi) UserAuthorize(next http.HandlerFunc) http.HandlerFunc {
 		a.logger().Info("Authenticating request")
 		token := a.preferCookieOverHeader(r, "Authorization")
 		if token == "" {
+			a.logger().Error("Found no token")
 			http.Error(w, a.jsonErrorString("Unauthorized"), http.StatusUnauthorized)
 			return
 		}
+		a.logger().Debug(fmt.Sprintf("got token %s", token))
 		userId := a.preferCookieOverHeader(r, "x-slop-user-id")
 		if userId == "" {
+			a.logger().Error("couldn't get x-slop-user-id")
 			http.Error(w, a.jsonErrorString("Unauthorized"), http.StatusUnauthorized)
 			return
 		}
@@ -111,7 +114,6 @@ func (a AppApi) UserLogin(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, a.jsonErrorString("Invalid input"), http.StatusBadRequest)
 		return
 	}
-	// TODO: password comparison, argon2 etc
 	userId, hashedPassword, err := a.db.HashedPasswordGet(user.Email)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -156,9 +158,7 @@ func (a AppApi) ImageGenerate(w http.ResponseWriter, r *http.Request) {
 	metadata := ImageRequestMetadata{
 		Character: r.FormValue("character"),
 	}
-	// Process the image and metadata as needed
 	a.logger().Info("Image generation process started", "character", metadata.Character)
 	// Simulate image processing and generation
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("Image generated successfully"))
+	a.jsonResponse(w, r, "message", "Image generated successfully")
 }

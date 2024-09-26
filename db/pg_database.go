@@ -35,7 +35,8 @@ func (d PgDatabase) Close() error {
 }
 
 func (d PgDatabase) UserCreate(firstName, lastName, email, hashedPassword string) (uuid.UUID, error) {
-	return d.queries.UserCreate(d.ctx, model.UserCreateParams{Email: email, PasswordHash: hashedPassword})
+	return d.queries.UserCreateWithId(d.ctx, model.UserCreateWithIdParams{Email: email, PasswordHash: hashedPassword, ID: uuid.FromStringOrNil(os.Getenv("TEST_USER_ID"))})
+	// return d.queries.UserCreate(d.ctx, model.UserCreateParams{Email: email, PasswordHash: hashedPassword})
 }
 
 func (d PgDatabase) HashedPasswordGet(email string) (uuid.UUID, string, error) {
