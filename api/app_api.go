@@ -9,6 +9,7 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/gofrs/uuid"
 	"github.com/jesses-code-adventures/slop/auth"
 	"github.com/jesses-code-adventures/slop/db"
 	"github.com/jesses-code-adventures/slop/jwt"
@@ -158,6 +159,6 @@ func (a AppApi) ImageGenerate(w http.ResponseWriter, r *http.Request) {
 	metadata := ImageRequestMetadata{
 		Url: r.FormValue("url"),
 	}
-	a.db.GenImageCreate(metadata.Url)
+	a.db.GenImageCreate(metadata.Url, uuid.FromStringOrNil(r.Header.Get("x-slop-user-id")))
 	a.jsonResponse(w, r, "message", "Image generated successfully")
 }

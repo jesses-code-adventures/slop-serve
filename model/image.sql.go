@@ -12,11 +12,16 @@ import (
 )
 
 const genImageCreate = `-- name: GenImageCreate :one
-insert into generated_images (url) values ($1) returning id
+insert into generated_images (url, user_id) values ($1, $2) returning id
 `
 
-func (q *Queries) GenImageCreate(ctx context.Context, url string) (uuid.UUID, error) {
-	row := q.db.QueryRow(ctx, genImageCreate, url)
+type GenImageCreateParams struct {
+	Url    string
+	UserID uuid.UUID
+}
+
+func (q *Queries) GenImageCreate(ctx context.Context, arg GenImageCreateParams) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, genImageCreate, arg.Url, arg.UserID)
 	var id uuid.UUID
 	err := row.Scan(&id)
 	return id, err

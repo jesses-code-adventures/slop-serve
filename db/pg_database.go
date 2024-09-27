@@ -46,6 +46,6 @@ func (d PgDatabase) HashedPasswordGet(email string) (uuid.UUID, string, error) {
 	return resp.UserID, resp.PasswordHash, nil
 }
 
-func (d PgDatabase) GenImageCreate(url string) (uuid.UUID, error) {
-	return d.queries.GenImageCreate(d.ctx, url)
+func (d PgDatabase) GenImageCreate(url string, userId uuid.UUID) (uuid.UUID, error) {
+	return d.queries.GenImageCreate(d.ctx, model.GenImageCreateParams{Url: url, UserID: userId})
 }

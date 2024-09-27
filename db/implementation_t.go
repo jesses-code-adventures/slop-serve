@@ -44,9 +44,9 @@ func (d TestDatabase) HashedPasswordGet(email string) (hashedPassword string, er
 }
 
 // TODO: should return the whole image
-func (d TestDatabase) GenImageCreate(url string) (id uuid.UUID, err error) {
+func (d TestDatabase) GenImageCreate(url string, userId uuid.UUID) (id uuid.UUID, err error) {
 	createdAt := time.Now()
-	d.logger.Debug(fmt.Sprintf("create gen image db\ncreated_at: %s, url: %s", createdAt, url))
+	d.logger.Debug(fmt.Sprintf("create gen image db\ncreated_at: %s, user_id: %s, url: %s", createdAt, userId, url))
 	id = getTestGenImageUUID()
 	return
 }

@@ -14,6 +14,7 @@ type GeneratedImage struct {
 	CreatedAt pgtype.Timestamptz
 	UpdatedAt pgtype.Timestamptz
 	Url       string
+	UserID    uuid.UUID
 }
 
 type User struct {
